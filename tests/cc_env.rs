@@ -2,8 +2,8 @@ extern crate cc;
 extern crate tempdir;
 
 use std::env;
-use std::path::Path;
 use std::ffi::OsString;
+use std::path::Path;
 
 mod support;
 use support::Test;

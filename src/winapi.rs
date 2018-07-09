@@ -106,8 +106,18 @@ pub type LPSAFEARRAY = *mut SAFEARRAY;
 
 macro_rules! DEFINE_GUID {
     (
-        $name:ident, $l:expr, $w1:expr, $w2:expr,
-        $b1:expr, $b2:expr, $b3:expr, $b4:expr, $b5:expr, $b6:expr, $b7:expr, $b8:expr
+        $name:ident,
+        $l:expr,
+        $w1:expr,
+        $w2:expr,
+        $b1:expr,
+        $b2:expr,
+        $b3:expr,
+        $b4:expr,
+        $b5:expr,
+        $b6:expr,
+        $b7:expr,
+        $b8:expr
     ) => {
         pub const $name: $crate::winapi::GUID = $crate::winapi::GUID {
             Data1: $l,
@@ -115,7 +125,7 @@ macro_rules! DEFINE_GUID {
             Data3: $w2,
             Data4: [$b1, $b2, $b3, $b4, $b5, $b6, $b7, $b8],
         };
-    }
+    };
 }
 
 macro_rules! RIDL {

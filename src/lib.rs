@@ -60,15 +60,15 @@
 #[cfg(feature = "parallel")]
 extern crate rayon;
 
+use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::io::{self, BufRead, BufReader, Read, Write};
-use std::thread::{self, JoinHandle};
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::thread::{self, JoinHandle};
 
 // These modules are all glue to support reading the MSVC version from
 // the registry and from COM interfaces
@@ -1158,7 +1158,9 @@ impl Build {
                 }
 
                 // armv7 targets get to use armv7 instructions
-                if (target.starts_with("armv7") || target.starts_with("thumbv7")) && target.contains("-linux-") {
+                if (target.starts_with("armv7") || target.starts_with("thumbv7"))
+                    && target.contains("-linux-")
+                {
                     cmd.args.push("-march=armv7-a".into());
                 }
 
@@ -1487,7 +1489,8 @@ impl Build {
         };
 
         self.print(&format!("Detecting iOS SDK path for {}", sdk));
-        let sdk_path = self.cmd("xcrun")
+        let sdk_path = self
+            .cmd("xcrun")
             .arg("--show-sdk-path")
             .arg("--sdk")
             .arg(sdk)
@@ -1552,7 +1555,8 @@ impl Build {
 
         let cl_exe = windows_registry::find_tool(&target, "cl.exe");
 
-        let tool_opt: Option<Tool> = self.env_tool(env)
+        let tool_opt: Option<Tool> = self
+            .env_tool(env)
             .map(|(tool, cc, args)| {
                 // chop off leading/trailing whitespace to work around
                 // semi-buggy build scripts which are shared in
@@ -1699,9 +1703,9 @@ impl Build {
         // configure for invocations like `clang-cl` we still get a "works out
         // of the box" experience.
         if let Some(cl_exe) = cl_exe {
-            if tool.family == (ToolFamily::Msvc { clang_cl: true }) &&
-                tool.env.len() == 0 &&
-                target.contains("msvc")
+            if tool.family == (ToolFamily::Msvc { clang_cl: true })
+                && tool.env.len() == 0
+                && target.contains("msvc")
             {
                 for &(ref k, ref v) in cl_exe.env.iter() {
                     tool.env.push((k.to_owned(), v.to_owned()));
@@ -1717,7 +1721,8 @@ impl Build {
         let host = self.get_host()?;
         let kind = if host == target { "HOST" } else { "TARGET" };
         let target_u = target.replace("-", "_");
-        let res = self.getenv(&format!("{}_{}", var_base, target))
+        let res = self
+            .getenv(&format!("{}_{}", var_base, target))
             .or_else(|| self.getenv(&format!("{}_{}", var_base, target_u)))
             .or_else(|| self.getenv(&format!("{}_{}", kind, var_base)))
             .or_else(|| self.getenv(var_base));
@@ -1938,10 +1943,11 @@ impl Tool {
         let family = if let Some(fname) = path.file_name().and_then(|p| p.to_str()) {
             if fname.contains("clang-cl") {
                 ToolFamily::Msvc { clang_cl: true }
-            } else if fname.contains("cl") &&
-                !fname.contains("cloudabi") &&
-                !fname.contains("uclibc") &&
-                !fname.contains("clang") {
+            } else if fname.contains("cl")
+                && !fname.contains("cloudabi")
+                && !fname.contains("uclibc")
+                && !fname.contains("clang")
+            {
                 ToolFamily::Msvc { clang_cl: false }
             } else if fname.contains("clang") {
                 ToolFamily::Clang
