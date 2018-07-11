@@ -17,7 +17,6 @@ use std::fs::File;
 use std::io::Read;
 use std::mem;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use com;
 use registry::{RegistryKey, LOCAL_MACHINE};
@@ -32,22 +31,6 @@ macro_rules! otry {
             None => return None,
         }
     };
-}
-
-/// Attempts to find a tool within an MSVC installation using the Windows
-/// registry as a point to search from.
-///
-/// The `target` argument is the target that the tool should work for (e.g.
-/// compile or link for) and the `tool` argument is the tool to find (e.g.
-/// `cl.exe` or `link.exe`).
-///
-/// This function will return `None` if the tool could not be found, or it will
-/// return `Some(cmd)` which represents a command that's ready to execute the
-/// tool with the appropriate environment variables set.
-///
-/// Note that this function always returns `None` for non-MSVC targets.
-pub fn find(target: &str, tool: &str) -> Option<Command> {
-    find_tool(target, tool).map(|c| c.to_command())
 }
 
 /// Similar to the `find` function above, this function will attempt the same

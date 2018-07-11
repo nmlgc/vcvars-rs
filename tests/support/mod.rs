@@ -6,7 +6,6 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::PathBuf;
 
-use cc;
 use tempdir::TempDir;
 
 pub struct Test {
@@ -34,12 +33,6 @@ impl Test {
         }
     }
 
-    pub fn gnu() -> Test {
-        let t = Test::new();
-        t.shim("cc").shim("c++").shim("ar");
-        t
-    }
-
     pub fn msvc() -> Test {
         let mut t = Test::new();
         t.shim("cl").shim("lib.exe");
@@ -53,30 +46,6 @@ impl Test {
             .or_else(|_| fs::copy(&self.gcc, self.td.path().join(&fname)).map(|_| ()))
             .unwrap();
         self
-    }
-
-    pub fn gcc(&self) -> cc::Build {
-        let mut cfg = cc::Build::new();
-        let mut path = env::split_paths(&env::var_os("PATH").unwrap()).collect::<Vec<_>>();
-        path.insert(0, self.td.path().to_owned());
-        let target = if self.msvc {
-            "x86_64-pc-windows-msvc"
-        } else {
-            "x86_64-unknown-linux-gnu"
-        };
-
-        cfg.target(target)
-            .host(target)
-            .opt_level(2)
-            .debug(false)
-            .out_dir(self.td.path())
-            .__set_env("PATH", env::join_paths(path).unwrap())
-            .__set_env("GCCTEST_OUT_DIR", self.td.path());
-        if self.msvc {
-            cfg.compiler(self.td.path().join("cl"));
-            cfg.archiver(self.td.path().join("lib.exe"));
-        }
-        cfg
     }
 
     pub fn cmd(&self, i: u32) -> Execution {
