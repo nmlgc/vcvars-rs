@@ -44,8 +44,6 @@ pub fn find_tool(_target: &str, _tool: &str) -> Option<Tool> {
 /// Documented above.
 #[cfg(windows)]
 pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
-    use std::env;
-
     // This logic is all tailored for MSVC, if we're not that then bail out
     // early.
     if !target.contains("msvc") {
@@ -61,18 +59,6 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
 
     if tool.contains("devenv") {
         return find_devenv(target);
-    }
-
-    // If VCINSTALLDIR is set, then someone's probably already run vcvars and we
-    // should just find whatever that indicates.
-    if env::var_os("VCINSTALLDIR").is_some() {
-        return env::var_os("PATH")
-            .and_then(|path| {
-                env::split_paths(&path)
-                    .map(|p| p.join(tool))
-                    .find(|p| p.exists())
-            })
-            .map(|path| Tool::new(path.into()));
     }
 
     // Ok, if we're here, now comes the fun part of the probing. Default shells
