@@ -68,10 +68,10 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
     // environment variables like `LIB`, `INCLUDE`, and `PATH` to ensure that
     // the tool is actually usable.
 
-    return find_msvc_15(tool, target)
-        .or_else(|| find_msvc_14(tool, target))
-        .or_else(|| find_msvc_12(tool, target))
-        .or_else(|| find_msvc_11(tool, target));
+    return find_msvc_15(target)
+        .or_else(|| find_msvc_14(target))
+        .or_else(|| find_msvc_12(target))
+        .or_else(|| find_msvc_11(target));
 }
 
 /// A version of Visual Studio
@@ -183,14 +183,14 @@ impl MsvcTool {
 // Note that much of this logic can be found [online] wrt paths, COM, etc.
 //
 // [online]: https://blogs.msdn.microsoft.com/vcblog/2017/03/06/finding-the-visual-c-compiler-tools-in-visual-studio-2017/
-fn find_msvc_15(tool: &str, target: &str) -> Option<Tool> {
+fn find_msvc_15(target: &str) -> Option<Tool> {
     otry!(com::initialize().ok());
 
     let config = otry!(SetupConfiguration::new().ok());
     let iter = otry!(config.enum_all_instances().ok());
     for instance in iter {
         let instance = otry!(instance.ok());
-        let tool = tool_from_vs15_instance(tool, target, &instance);
+        let tool = tool_from_vs15_instance(target, &instance);
         if tool.is_some() {
             return tool;
         }
@@ -199,10 +199,10 @@ fn find_msvc_15(tool: &str, target: &str) -> Option<Tool> {
     None
 }
 
-fn tool_from_vs15_instance(tool: &str, target: &str, instance: &SetupInstance) -> Option<Tool> {
+fn tool_from_vs15_instance(target: &str, instance: &SetupInstance) -> Option<Tool> {
     let (bin_path, host_dylib_path, lib_path, include_path) =
         otry!(vs15_vc_paths(target, instance));
-    let tool_path = bin_path.join(tool);
+    let tool_path = bin_path.join("link.exe");
     if !tool_path.exists() {
         return None;
     };
@@ -271,9 +271,9 @@ fn atl_paths(target: &str, path: &Path) -> Option<(PathBuf, PathBuf)> {
 
 // For MSVC 14 we need to find the Universal CRT as well as either
 // the Windows 10 SDK or Windows 8.1 SDK.
-fn find_msvc_14(tool: &str, target: &str) -> Option<Tool> {
+fn find_msvc_14(target: &str) -> Option<Tool> {
     let vcdir = otry!(get_vc_dir("14.0"));
-    let mut tool = otry!(get_tool(tool, &vcdir, target));
+    let mut tool = otry!(get_tool(&vcdir, target));
     otry!(add_sdks(&mut tool, target));
     Some(tool.into_tool())
 }
@@ -314,9 +314,9 @@ fn add_sdks(tool: &mut MsvcTool, target: &str) -> Option<()> {
 }
 
 // For MSVC 12 we need to find the Windows 8.1 SDK.
-fn find_msvc_12(tool: &str, target: &str) -> Option<Tool> {
+fn find_msvc_12(target: &str) -> Option<Tool> {
     let vcdir = otry!(get_vc_dir("12.0"));
-    let mut tool = otry!(get_tool(tool, &vcdir, target));
+    let mut tool = otry!(get_tool(&vcdir, target));
     let sub = otry!(lib_subdir(target));
     let sdk81 = otry!(get_sdk81_dir());
     tool.path.push(sdk81.join("bin").join(sub));
@@ -330,9 +330,9 @@ fn find_msvc_12(tool: &str, target: &str) -> Option<Tool> {
 }
 
 // For MSVC 11 we need to find the Windows 8 SDK.
-fn find_msvc_11(tool: &str, target: &str) -> Option<Tool> {
+fn find_msvc_11(target: &str) -> Option<Tool> {
     let vcdir = otry!(get_vc_dir("11.0"));
-    let mut tool = otry!(get_tool(tool, &vcdir, target));
+    let mut tool = otry!(get_tool(&vcdir, target));
     let sub = otry!(lib_subdir(target));
     let sdk8 = otry!(get_sdk8_dir());
     tool.path.push(sdk8.join("bin").join(sub));
@@ -355,12 +355,12 @@ fn add_env(tool: &mut Tool, env: &str, paths: Vec<PathBuf>) {
 
 // Given a possible MSVC installation directory, we look for the linker and
 // then add the MSVC library path.
-fn get_tool(tool: &str, path: &Path, target: &str) -> Option<MsvcTool> {
+fn get_tool(path: &Path, target: &str) -> Option<MsvcTool> {
     bin_subdir(target)
         .into_iter()
         .map(|(sub, host)| {
             (
-                path.join("bin").join(sub).join(tool),
+                path.join("bin").join(sub).join("link.exe"),
                 path.join("bin").join(host),
             )
         })
