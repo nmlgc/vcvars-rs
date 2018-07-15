@@ -346,9 +346,7 @@ fn find_msvc_11(target: &str) -> Option<Tool> {
 }
 
 fn add_env(tool: &mut Tool, env: &str, paths: Vec<PathBuf>) {
-    let prev = env::var_os(env).unwrap_or(OsString::new());
-    let prev = env::split_paths(&prev);
-    let new = paths.into_iter().chain(prev);
+    let new = paths.into_iter();
     tool.env
         .push((env.to_string().into(), env::join_paths(new).unwrap()));
 }
