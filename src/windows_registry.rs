@@ -145,16 +145,14 @@ pub fn find_vs_version() -> Result<VsVers, String> {
 }
 
 struct MsvcTool {
-    tool: PathBuf,
     libs: Vec<PathBuf>,
     path: Vec<PathBuf>,
     include: Vec<PathBuf>,
 }
 
 impl MsvcTool {
-    fn new(tool: PathBuf) -> MsvcTool {
+    fn new() -> MsvcTool {
         MsvcTool {
-            tool: tool,
             libs: Vec::new(),
             path: Vec::new(),
             include: Vec::new(),
@@ -163,12 +161,11 @@ impl MsvcTool {
 
     fn into_tool(self) -> Tool {
         let MsvcTool {
-            tool,
             libs,
             path,
             include,
         } = self;
-        let mut tool = Tool::new(tool.into());
+        let mut tool = Tool::new(PathBuf::new());
         add_env(&mut tool, "LIB", libs);
         add_env(&mut tool, "PATH", path);
         add_env(&mut tool, "INCLUDE", include);
@@ -207,7 +204,7 @@ fn tool_from_vs15_instance(target: &str, instance: &SetupInstance) -> Option<Too
         return None;
     };
 
-    let mut tool = MsvcTool::new(tool_path);
+    let mut tool = MsvcTool::new();
     tool.path.push(host_dylib_path);
     tool.libs.push(lib_path);
     tool.include.push(include_path);
@@ -363,8 +360,8 @@ fn get_tool(path: &Path, target: &str) -> Option<MsvcTool> {
             )
         })
         .filter(|&(ref path, _)| path.is_file())
-        .map(|(path, host)| {
-            let mut tool = MsvcTool::new(path);
+        .map(|(_path, host)| {
+            let mut tool = MsvcTool::new();
             tool.path.push(host);
             tool
         })
