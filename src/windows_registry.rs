@@ -61,17 +61,16 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
         return find_devenv(target);
     }
 
-    // Ok, if we're here, now comes the fun part of the probing. Default shells
-    // or shells like MSYS aren't really configured to execute `cl.exe` and the
-    // various compiler tools shipped as part of Visual Studio. Here we try to
-    // first find the relevant tool, then we also have to be sure to fill in
-    // environment variables like `LIB`, `INCLUDE`, and `PATH` to ensure that
-    // the tool is actually usable.
+    None
+}
 
-    return find_msvc_15(target)
+/// Finds the latest installed Visual Studio version with a linker for the
+/// given target.
+pub fn find_msvc_latest(target: &str) -> Option<Tool> {
+    find_msvc_15(target)
         .or_else(|| find_msvc_14(target))
         .or_else(|| find_msvc_12(target))
-        .or_else(|| find_msvc_11(target));
+        .or_else(|| find_msvc_11(target))
 }
 
 /// A version of Visual Studio
