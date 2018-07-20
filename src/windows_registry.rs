@@ -64,9 +64,9 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
     None
 }
 
-/// Finds the latest installed Visual Studio version with a linker for the
+/// Finds the latest installed Visual C++ version with a linker for the
 /// given target.
-pub fn find_msvc_latest(target: &str) -> Option<Tool> {
+pub fn find_msvc_latest(target: &str) -> Option<VCInstance> {
     find_msvc_15(target)
         .or_else(|| find_msvc_14(target))
         .or_else(|| find_msvc_12(target))
@@ -143,32 +143,31 @@ pub fn find_vs_version() -> Result<VsVers, String> {
     }
 }
 
-struct MsvcTool {
+/// An installation of a specific Visual C++ version.
+pub struct VCInstance {
     libs: Vec<PathBuf>,
     path: Vec<PathBuf>,
     include: Vec<PathBuf>,
 }
 
-impl MsvcTool {
-    fn new() -> MsvcTool {
-        MsvcTool {
+impl VCInstance {
+    fn new() -> VCInstance {
+        VCInstance {
             libs: Vec::new(),
             path: Vec::new(),
             include: Vec::new(),
         }
     }
 
-    fn into_tool(self) -> Tool {
-        let MsvcTool {
-            libs,
-            path,
-            include,
-        } = self;
-        let mut tool = Tool::new(PathBuf::new());
-        add_env(&mut tool, "LIB", libs);
-        add_env(&mut tool, "PATH", path);
-        add_env(&mut tool, "INCLUDE", include);
-        tool
+    /// Returns all environment variables necessary for this MSVC instance to be
+    /// usable, as a vector of (name, value) tuples.
+    pub fn env(self) -> Vec<(OsString, OsString)> {
+        let join = |var: Vec<PathBuf>| env::join_paths(var.into_iter()).unwrap();
+        vec![
+            ("LIB".into(), join(self.libs)),
+            ("PATH".into(), join(self.path)),
+            ("INCLUDE".into(), join(self.include)),
+        ]
     }
 }
 
@@ -179,23 +178,23 @@ impl MsvcTool {
 // Note that much of this logic can be found [online] wrt paths, COM, etc.
 //
 // [online]: https://blogs.msdn.microsoft.com/vcblog/2017/03/06/finding-the-visual-c-compiler-tools-in-visual-studio-2017/
-fn find_msvc_15(target: &str) -> Option<Tool> {
+fn find_msvc_15(target: &str) -> Option<VCInstance> {
     otry!(com::initialize().ok());
 
     let config = otry!(SetupConfiguration::new().ok());
     let iter = otry!(config.enum_all_instances().ok());
     for instance in iter {
         let instance = otry!(instance.ok());
-        let tool = tool_from_vs15_instance(target, &instance);
-        if tool.is_some() {
-            return tool;
+        let vc = vs15_instance(target, &instance);
+        if vc.is_some() {
+            return vc;
         }
     }
 
     None
 }
 
-fn tool_from_vs15_instance(target: &str, instance: &SetupInstance) -> Option<Tool> {
+fn vs15_instance(target: &str, instance: &SetupInstance) -> Option<VCInstance> {
     let (bin_path, host_dylib_path, lib_path, include_path) =
         otry!(vs15_vc_paths(target, instance));
     let tool_path = bin_path.join("link.exe");
@@ -203,7 +202,7 @@ fn tool_from_vs15_instance(target: &str, instance: &SetupInstance) -> Option<Too
         return None;
     };
 
-    let mut tool = MsvcTool::new();
+    let mut tool = VCInstance::new();
     tool.path.push(host_dylib_path);
     tool.libs.push(lib_path);
     tool.include.push(include_path);
@@ -215,7 +214,7 @@ fn tool_from_vs15_instance(target: &str, instance: &SetupInstance) -> Option<Too
 
     otry!(add_sdks(&mut tool, target));
 
-    Some(tool.into_tool())
+    Some(tool)
 }
 
 fn vs15_vc_paths(
@@ -267,14 +266,14 @@ fn atl_paths(target: &str, path: &Path) -> Option<(PathBuf, PathBuf)> {
 
 // For MSVC 14 we need to find the Universal CRT as well as either
 // the Windows 10 SDK or Windows 8.1 SDK.
-fn find_msvc_14(target: &str) -> Option<Tool> {
+fn find_msvc_14(target: &str) -> Option<VCInstance> {
     let vcdir = otry!(get_vc_dir("14.0"));
-    let mut tool = otry!(get_tool(&vcdir, target));
+    let mut tool = otry!(get_instance(&vcdir, target));
     otry!(add_sdks(&mut tool, target));
-    Some(tool.into_tool())
+    Some(tool)
 }
 
-fn add_sdks(tool: &mut MsvcTool, target: &str) -> Option<()> {
+fn add_sdks(tool: &mut VCInstance, target: &str) -> Option<()> {
     let sub = otry!(lib_subdir(target));
     let (ucrt, ucrt_version) = otry!(get_ucrt_dir());
 
@@ -310,9 +309,9 @@ fn add_sdks(tool: &mut MsvcTool, target: &str) -> Option<()> {
 }
 
 // For MSVC 12 we need to find the Windows 8.1 SDK.
-fn find_msvc_12(target: &str) -> Option<Tool> {
+fn find_msvc_12(target: &str) -> Option<VCInstance> {
     let vcdir = otry!(get_vc_dir("12.0"));
-    let mut tool = otry!(get_tool(&vcdir, target));
+    let mut tool = otry!(get_instance(&vcdir, target));
     let sub = otry!(lib_subdir(target));
     let sdk81 = otry!(get_sdk81_dir());
     tool.path.push(sdk81.join("bin").join(sub));
@@ -322,13 +321,13 @@ fn find_msvc_12(target: &str) -> Option<Tool> {
     tool.include.push(sdk_include.join("shared"));
     tool.include.push(sdk_include.join("um"));
     tool.include.push(sdk_include.join("winrt"));
-    Some(tool.into_tool())
+    Some(tool)
 }
 
 // For MSVC 11 we need to find the Windows 8 SDK.
-fn find_msvc_11(target: &str) -> Option<Tool> {
+fn find_msvc_11(target: &str) -> Option<VCInstance> {
     let vcdir = otry!(get_vc_dir("11.0"));
-    let mut tool = otry!(get_tool(&vcdir, target));
+    let mut tool = otry!(get_instance(&vcdir, target));
     let sub = otry!(lib_subdir(target));
     let sdk8 = otry!(get_sdk8_dir());
     tool.path.push(sdk8.join("bin").join(sub));
@@ -338,18 +337,12 @@ fn find_msvc_11(target: &str) -> Option<Tool> {
     tool.include.push(sdk_include.join("shared"));
     tool.include.push(sdk_include.join("um"));
     tool.include.push(sdk_include.join("winrt"));
-    Some(tool.into_tool())
-}
-
-fn add_env(tool: &mut Tool, env: &str, paths: Vec<PathBuf>) {
-    let new = paths.into_iter();
-    tool.env
-        .push((env.to_string().into(), env::join_paths(new).unwrap()));
+    Some(tool)
 }
 
 // Given a possible MSVC installation directory, we look for the linker and
 // then add the MSVC library path.
-fn get_tool(path: &Path, target: &str) -> Option<MsvcTool> {
+fn get_instance(path: &Path, target: &str) -> Option<VCInstance> {
     bin_subdir(target)
         .into_iter()
         .map(|(sub, host)| {
@@ -360,7 +353,7 @@ fn get_tool(path: &Path, target: &str) -> Option<MsvcTool> {
         })
         .filter(|&(ref path, _)| path.is_file())
         .map(|(_path, host)| {
-            let mut tool = MsvcTool::new();
+            let mut tool = VCInstance::new();
             tool.path.push(host);
             tool
         })
