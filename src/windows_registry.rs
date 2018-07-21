@@ -76,6 +76,8 @@ pub fn find_msvc_latest(target: &str) -> Option<VCInstance> {
 /// A version of Visual Studio
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum VsVers {
+    /// Visual Studio 11 (2012)
+    Vs11,
     /// Visual Studio 12 (2013)
     Vs12,
     /// Visual Studio 14 (2015)
@@ -145,18 +147,25 @@ pub fn find_vs_version() -> Result<VsVers, String> {
 
 /// An installation of a specific Visual C++ version.
 pub struct VCInstance {
+    version: VsVers,
     libs: Vec<PathBuf>,
     path: Vec<PathBuf>,
     include: Vec<PathBuf>,
 }
 
 impl VCInstance {
-    fn new() -> VCInstance {
+    fn new(version: VsVers) -> VCInstance {
         VCInstance {
+            version,
             libs: Vec::new(),
             path: Vec::new(),
             include: Vec::new(),
         }
+    }
+
+    /// Returns which version of Visual C++ this is an instance of.
+    pub fn version(&self) -> &VsVers {
+        &self.version
     }
 
     /// Returns all environment variables necessary for this MSVC instance to be
@@ -202,7 +211,7 @@ fn vs15_instance(target: &str, instance: &SetupInstance) -> Option<VCInstance> {
         return None;
     };
 
-    let mut tool = VCInstance::new();
+    let mut tool = VCInstance::new(VsVers::Vs15);
     tool.path.push(host_dylib_path);
     tool.libs.push(lib_path);
     tool.include.push(include_path);
@@ -268,7 +277,7 @@ fn atl_paths(target: &str, path: &Path) -> Option<(PathBuf, PathBuf)> {
 // the Windows 10 SDK or Windows 8.1 SDK.
 fn find_msvc_14(target: &str) -> Option<VCInstance> {
     let vcdir = otry!(get_vc_dir("14.0"));
-    let mut tool = otry!(get_instance(&vcdir, target));
+    let mut tool = otry!(get_instance(VsVers::Vs14, &vcdir, target));
     otry!(add_sdks(&mut tool, target));
     Some(tool)
 }
@@ -311,7 +320,7 @@ fn add_sdks(tool: &mut VCInstance, target: &str) -> Option<()> {
 // For MSVC 12 we need to find the Windows 8.1 SDK.
 fn find_msvc_12(target: &str) -> Option<VCInstance> {
     let vcdir = otry!(get_vc_dir("12.0"));
-    let mut tool = otry!(get_instance(&vcdir, target));
+    let mut tool = otry!(get_instance(VsVers::Vs12, &vcdir, target));
     let sub = otry!(lib_subdir(target));
     let sdk81 = otry!(get_sdk81_dir());
     tool.path.push(sdk81.join("bin").join(sub));
@@ -327,7 +336,7 @@ fn find_msvc_12(target: &str) -> Option<VCInstance> {
 // For MSVC 11 we need to find the Windows 8 SDK.
 fn find_msvc_11(target: &str) -> Option<VCInstance> {
     let vcdir = otry!(get_vc_dir("11.0"));
-    let mut tool = otry!(get_instance(&vcdir, target));
+    let mut tool = otry!(get_instance(VsVers::Vs11, &vcdir, target));
     let sub = otry!(lib_subdir(target));
     let sdk8 = otry!(get_sdk8_dir());
     tool.path.push(sdk8.join("bin").join(sub));
@@ -342,7 +351,7 @@ fn find_msvc_11(target: &str) -> Option<VCInstance> {
 
 // Given a possible MSVC installation directory, we look for the linker and
 // then add the MSVC library path.
-fn get_instance(path: &Path, target: &str) -> Option<VCInstance> {
+fn get_instance(version: VsVers, path: &Path, target: &str) -> Option<VCInstance> {
     bin_subdir(target)
         .into_iter()
         .map(|(sub, host)| {
@@ -353,7 +362,7 @@ fn get_instance(path: &Path, target: &str) -> Option<VCInstance> {
         })
         .filter(|&(ref path, _)| path.is_file())
         .map(|(_path, host)| {
-            let mut tool = VCInstance::new();
+            let mut tool = VCInstance::new(version);
             tool.path.push(host);
             tool
         })
