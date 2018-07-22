@@ -13,6 +13,7 @@
 
 use std::env;
 use std::ffi::OsString;
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::mem;
@@ -91,6 +92,22 @@ pub enum VsVers {
     #[doc(hidden)]
     #[allow(bad_style)]
     __Nonexhaustive_do_not_match_this_or_your_code_will_break,
+}
+
+impl fmt::Display for VsVers {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                VsVers::Vs11 => "Visual Studio 11 (2012)",
+                VsVers::Vs12 => "Visual Studio 12 (2013)",
+                VsVers::Vs14 => "Visual Studio 14 (2015)",
+                VsVers::Vs15 => "Visual Studio 15 (2017)",
+                _ => "(unknown)",
+            }
+        )
+    }
 }
 
 /// Find the most recent installed version of Visual Studio
