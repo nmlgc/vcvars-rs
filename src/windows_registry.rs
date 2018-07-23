@@ -165,15 +165,17 @@ pub fn find_vs_version() -> Result<VsVers, String> {
 /// An installation of a specific Visual C++ version.
 pub struct VCInstance {
     version: VsVers,
+    vcinstalldir: PathBuf,
     libs: Vec<PathBuf>,
     path: Vec<PathBuf>,
     include: Vec<PathBuf>,
 }
 
 impl VCInstance {
-    fn new(version: VsVers) -> VCInstance {
+    fn new(version: VsVers, vcinstalldir: PathBuf) -> VCInstance {
         VCInstance {
             version,
+            vcinstalldir,
             libs: Vec::new(),
             path: Vec::new(),
             include: Vec::new(),
@@ -193,6 +195,10 @@ impl VCInstance {
             ("LIB".into(), join(self.libs)),
             ("PATH".into(), join(self.path)),
             ("INCLUDE".into(), join(self.include)),
+            (
+                "VCINSTALLDIR".into(),
+                self.vcinstalldir.as_os_str().to_os_string(),
+            ),
         ]
     }
 }
@@ -221,14 +227,14 @@ fn find_msvc_15(target: &str) -> Option<VCInstance> {
 }
 
 fn vs15_instance(target: &str, instance: &SetupInstance) -> Option<VCInstance> {
-    let (bin_path, host_dylib_path, lib_path, include_path) =
+    let (instance_path, bin_path, host_dylib_path, lib_path, include_path) =
         otry!(vs15_vc_paths(target, instance));
     let tool_path = bin_path.join("link.exe");
     if !tool_path.exists() {
         return None;
     };
 
-    let mut tool = VCInstance::new(VsVers::Vs15);
+    let mut tool = VCInstance::new(VsVers::Vs15, instance_path.join("VC"));
     tool.path.push(host_dylib_path);
     tool.libs.push(lib_path);
     tool.include.push(include_path);
@@ -246,7 +252,7 @@ fn vs15_instance(target: &str, instance: &SetupInstance) -> Option<VCInstance> {
 fn vs15_vc_paths(
     target: &str,
     instance: &SetupInstance,
-) -> Option<(PathBuf, PathBuf, PathBuf, PathBuf)> {
+) -> Option<(PathBuf, PathBuf, PathBuf, PathBuf, PathBuf)> {
     let instance_path: PathBuf = otry!(instance.installation_path().ok()).into();
     let version_path =
         instance_path.join(r"VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt");
@@ -277,7 +283,13 @@ fn vs15_vc_paths(
         .join(&host.to_lowercase());
     let lib_path = path.join("lib").join(&target);
     let include_path = path.join("include");
-    Some((bin_path, host_dylib_path, lib_path, include_path))
+    Some((
+        instance_path,
+        bin_path,
+        host_dylib_path,
+        lib_path,
+        include_path,
+    ))
 }
 
 fn atl_paths(target: &str, path: &Path) -> Option<(PathBuf, PathBuf)> {
@@ -379,7 +391,7 @@ fn get_instance(version: VsVers, path: &Path, target: &str) -> Option<VCInstance
         })
         .filter(|&(ref path, _)| path.is_file())
         .map(|(_path, host)| {
-            let mut tool = VCInstance::new(version);
+            let mut tool = VCInstance::new(version, path.to_owned());
             tool.path.push(host);
             tool
         })
