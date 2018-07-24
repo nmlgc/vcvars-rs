@@ -203,14 +203,16 @@ impl VCInstance {
     }
 }
 
-// In MSVC 15 (2017) MS once again changed the scheme for locating
-// the tooling.  Now we must go through some COM interfaces, which
-// is super fun for Rust.
-//
-// Note that much of this logic can be found [online] wrt paths, COM, etc.
-//
-// [online]: https://blogs.msdn.microsoft.com/vcblog/2017/03/06/finding-the-visual-c-compiler-tools-in-visual-studio-2017/
-fn find_msvc_15(target: &str) -> Option<VCInstance> {
+/// Returns the environment of the Visual Studio 2017 installation, or None if
+/// it is not installed.
+pub fn find_msvc_15(target: &str) -> Option<VCInstance> {
+    // In MSVC 15 (2017) MS once again changed the scheme for locating
+    // the tooling.  Now we must go through some COM interfaces, which
+    // is super fun for Rust.
+    //
+    // Note that much of this logic can be found [online] wrt paths, COM, etc.
+    //
+    // [online]: https://blogs.msdn.microsoft.com/vcblog/2017/03/06/finding-the-visual-c-compiler-tools-in-visual-studio-2017/
     otry!(com::initialize().ok());
 
     let config = otry!(SetupConfiguration::new().ok());
@@ -302,9 +304,11 @@ fn atl_paths(target: &str, path: &Path) -> Option<(PathBuf, PathBuf)> {
     }
 }
 
-// For MSVC 14 we need to find the Universal CRT as well as either
-// the Windows 10 SDK or Windows 8.1 SDK.
-fn find_msvc_14(target: &str) -> Option<VCInstance> {
+/// Returns the environment of the Visual Studio 2015 installation, or None if
+/// it is not installed.
+pub fn find_msvc_14(target: &str) -> Option<VCInstance> {
+    // For MSVC 14 we need to find the Universal CRT as well as either
+    // the Windows 10 SDK or Windows 8.1 SDK.
     let vcdir = otry!(get_vc_dir("14.0"));
     let mut tool = otry!(get_instance(VsVers::Vs14, &vcdir, target));
     otry!(add_sdks(&mut tool, target));
@@ -346,8 +350,10 @@ fn add_sdks(tool: &mut VCInstance, target: &str) -> Option<()> {
     Some(())
 }
 
-// For MSVC 12 we need to find the Windows 8.1 SDK.
-fn find_msvc_12(target: &str) -> Option<VCInstance> {
+/// Returns the environment of the Visual Studio 2013 installation, or None if
+/// it is not installed.
+pub fn find_msvc_12(target: &str) -> Option<VCInstance> {
+    // For MSVC 12 we need to find the Windows 8.1 SDK.
     let vcdir = otry!(get_vc_dir("12.0"));
     let mut tool = otry!(get_instance(VsVers::Vs12, &vcdir, target));
     let sub = otry!(lib_subdir(target));
@@ -362,8 +368,10 @@ fn find_msvc_12(target: &str) -> Option<VCInstance> {
     Some(tool)
 }
 
-// For MSVC 11 we need to find the Windows 8 SDK.
-fn find_msvc_11(target: &str) -> Option<VCInstance> {
+/// Returns the environment of the Visual Studio 2012 installation, or None if
+/// it is not installed.
+pub fn find_msvc_11(target: &str) -> Option<VCInstance> {
+    // For MSVC 11 we need to find the Windows 8 SDK.
     let vcdir = otry!(get_vc_dir("11.0"));
     let mut tool = otry!(get_instance(VsVers::Vs11, &vcdir, target));
     let sub = otry!(lib_subdir(target));
