@@ -201,6 +201,19 @@ impl VCInstance {
             ),
         ]
     }
+
+    /// Sets up the rustc environment to enforce Rust code for -msvc targets
+    /// being linked with this linker and platform toolset.
+    pub fn set_rustc_env(self) {
+        // As of Rust 1.28.0, cargo parses those as UTF-8.
+        for (name, val) in self.env() {
+            let (n, v) = (
+                name.as_os_str().to_str().unwrap(),
+                val.as_os_str().to_str().unwrap(),
+            );
+            println!("cargo:rustc-env={}={}", n, v);
+        }
+    }
 }
 
 /// Returns the environment of the Visual Studio 2017 installation, or None if
