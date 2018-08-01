@@ -65,13 +65,26 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
     None
 }
 
+type FindMSVCType = fn(target: &str) -> Option<VCInstance>;
+
+/// Array of all supported Visual C++ versions, together with their find
+/// functions, sorted from newest to oldest.
+pub const VERSIONS: &[(VsVers, FindMSVCType)] = &[
+    (VsVers::Vs15, find_msvc_15),
+    (VsVers::Vs14, find_msvc_14),
+    (VsVers::Vs12, find_msvc_12),
+    (VsVers::Vs11, find_msvc_11),
+];
+
 /// Finds the latest installed Visual C++ version with a linker for the
 /// given target.
 pub fn find_msvc_latest(target: &str) -> Option<VCInstance> {
-    find_msvc_15(target)
-        .or_else(|| find_msvc_14(target))
-        .or_else(|| find_msvc_12(target))
-        .or_else(|| find_msvc_11(target))
+    for (_, func) in VERSIONS {
+        if let Some(vc) = func(target) {
+            return Some(vc);
+        }
+    }
+    None
 }
 
 /// A version of Visual Studio
