@@ -123,6 +123,19 @@ impl fmt::Display for VsVers {
     }
 }
 
+impl VsVers {
+    /// Returns the value of the VisualStudioVersion environment variable for
+    /// this version.
+    pub fn visualstudioversion(self) -> Option<&'static str> {
+        match self {
+            VsVers::Vs15 => Some("15.0"),
+            VsVers::Vs14 => Some("14.0"),
+            VsVers::Vs12 => Some("12.0"),
+            _ => None,
+        }
+    }
+}
+
 /// Find the most recent installed version of Visual Studio
 ///
 /// This is used by the cmake crate to figure out the correct
@@ -204,7 +217,11 @@ impl VCInstance {
     /// usable, as a vector of (name, value) tuples.
     pub fn env(self) -> Vec<(OsString, OsString)> {
         let join = |var: Vec<PathBuf>| env::join_paths(var.into_iter()).unwrap();
-        vec![
+        let mut ret = Vec::new();
+        if let Some(vsv) = self.version.visualstudioversion() {
+            ret.push(("VisualStudioVersion".into(), vsv.into()));
+        }
+        ret.extend(vec![
             ("LIB".into(), join(self.libs)),
             ("PATH".into(), join(self.path)),
             ("INCLUDE".into(), join(self.include)),
@@ -212,7 +229,8 @@ impl VCInstance {
                 "VCINSTALLDIR".into(),
                 self.vcinstalldir.as_os_str().to_os_string(),
             ),
-        ]
+        ]);
+        ret
     }
 
     /// Sets up the rustc environment to enforce Rust code for -msvc targets
