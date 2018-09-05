@@ -569,8 +569,8 @@ fn bin_subdir(target: &str) -> Vec<(&'static str, &'static str)> {
         ("i586", X86_64) | ("i686", X86_64) => vec![("amd64_x86", "amd64"), ("", "")],
         ("x86_64", X86) => vec![("x86_amd64", "")],
         ("x86_64", X86_64) => vec![("amd64", "amd64"), ("x86_amd64", "")],
-        ("arm", X86) => vec![("x86_arm", "")],
-        ("arm", X86_64) => vec![("amd64_arm", "amd64"), ("x86_arm", "")],
+        ("arm", X86) | ("thumbv7a", X86) => vec![("x86_arm", "")],
+        ("arm", X86_64) | ("thumbv7a", X86_64) => vec![("amd64_arm", "amd64"), ("x86_arm", "")],
         _ => vec![],
     }
 }
@@ -580,7 +580,7 @@ fn lib_subdir(target: &str) -> Option<&'static str> {
     match arch {
         "i586" | "i686" => Some("x86"),
         "x86_64" => Some("x64"),
-        "arm" => Some("arm"),
+        "arm" | "thumbv7a" => Some("arm"),
         "aarch64" => Some("arm64"),
         _ => None,
     }
@@ -592,7 +592,7 @@ fn vc_lib_subdir(target: &str) -> Option<&'static str> {
     match arch {
         "i586" | "i686" => Some(""),
         "x86_64" => Some("amd64"),
-        "arm" => Some("arm"),
+        "arm" | "thumbv7a" => Some("arm"),
         "aarch64" => Some("arm64"),
         _ => None,
     }
